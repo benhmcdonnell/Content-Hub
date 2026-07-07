@@ -1,0 +1,9 @@
+{
+  "name": "content-hub-saas",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "@anthropic-ai/sdk": "^0.32.1"
+  }
+}
