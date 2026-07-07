@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Content Hub</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e8eaed;
+    --muted: #9aa0ac;
+    --accent: #6c8cff;
+    --green: #3ecf8e;
+    --red: #ff6b6b;
+    --yellow: #f2c94c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  #app { max-width: 960px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1, h2, h3 { font-weight: 600; }
+  .center-screen {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    width: 100%;
+    max-width: 400px;
+  }
+  input, textarea, select {
+    width: 100%;
+    padding: 10px 12px;
+    margin: 6px 0 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  label { font-size: 13px; color: var(--muted); }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--border); }
+  .btn-green { background: var(--green); color: #06281c; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .error { color: var(--red); font-size: 13px; margin: -8px 0 12px; }
+  .link { color: var(--accent); cursor: pointer; text-decoration: underline; font-size: 13px; }
+
+  header.hub-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px;
+  }
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 16px; cursor: pointer; color: var(--muted);
+    border-bottom: 2px solid transparent; font-size: 14px; font-weight: 600;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .generate-bar {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .generate-bar .field { flex: 1; min-width: 140px; }
+  .generate-bar label { display: block; margin-bottom: 4px; }
+  .generate-bar input, .generate-bar select { margin: 0; }
+
+  .status-group { margin-bottom: 32px; }
+  .status-group h3 { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .cards-grid { display: flex; flex-direction: column; gap: 12px; }
+  .post-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .post-card .meta { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; background: var(--panel-2); color: var(--muted);
+  }
+  .post-card pre {
+    white-space: pre-wrap; word-wrap: break-word; font-family: inherit;
+    font-size: 14px; line-height: 1.5; margin: 0 0 12px;
+  }
+  .checkbox-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 16px; }
+  .checkbox-grid label {
+    display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 14px;
+    border: 1px solid var(--border); padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  }
+  .checkbox-grid input { width: auto; margin: 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .top-right { position: absolute; top: 20px; right: 20px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// ---- Filled in from your Supabase project ----
+const SUPABASE_URL = 'https://ynktfetpbpyxjvzyuwsj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlua3RmZXRwYnB5eGp2enl1d3NqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDg2NTksImV4cCI6MjA5NzE4NDY1OX0.yF2tYVWCuSaG3NKbLPc20NxXt59lk0Hl7_wOCm5HxGE';
+// ------------------------------------------------
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const PLATFORMS = ['Reddit', 'LinkedIn', 'Quora', 'X / Twitter', 'Hacker News', 'Facebook Groups'];
+
+let session = null;
+let profile = null;
+let saves = [];
+let activeTab = 'forum'; // 'forum' | 'newsletter'
+let draft = null;        // last generated, not-yet-saved card
+let generating = false;
+
+const app = document.getElementById('app');
+
+async function init() {
+  const { data } = await supabase.auth.getSession();
+  session = data.session;
+  supabase.auth.onAuthStateChange((_event, newSession) => {
+    session = newSession;
+    boot();
+  });
+  boot();
+}
+
+async function boot() {
+  if (!session) return renderAuth();
+  await loadProfile();
+  if (!profile || !profile.onboarding_completed) return renderOnboarding();
+  await loadSaves();
+  renderHub();
+}
+
+// ---------- API helpers ----------
+
+async function authedFetch(path, options = {}) {
+  const token = session?.access_token;
+  const res = await fetch(`/.netlify/functions/${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || 'Request failed');
+  return body;
+}
+
+async function loadProfile() {
+  profile = await authedFetch('profile');
+}
+
+async function loadSaves() {
+  saves = await authedFetch('saves');
+}
+
+// ---------- Auth view ----------
+
+function renderAuth() {
+  app.innerHTML = `
+    <div class="center-screen">
+      <div class="card-box">
+        <h2 id="auth-title">Log in</h2>
+        <div id="auth-error" class="error" style="display:none"></div>
+        <label>Email</label>
+        <input id="email" type="email" autocomplete="email" />
+        <label>Password</label>
+        <input id="password" type="password" autocomplete="current-password" />
+        <button id="auth-submit" class="btn-primary" style="width:100%">Log in</button>
+        <div style="margin-top:14px; text-align:center;">
+          <span class="link" id="auth-toggle">Don't have an account? Sign up</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let mode = 'login';
+  const title = document.getElementById('auth-title');
+  const submit = document.getElementById('auth-submit');
+  const toggle = document.getElementById('auth-toggle');
+  const errBox = document.getElementById('auth-error');
+
+  toggle.onclick = () => {
+    mode = mode === 'login' ? 'signup' : 'login';
+    title.textContent = mode === 'login' ? 'Log in' : 'Create an account';
+    submit.textContent = mode === 'login' ? 'Log in' : 'Sign up';
+    toggle.textContent = mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in';
+    errBox.style.display = 'none';
+  };
+
+  submit.onclick = async () => {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    errBox.style.display = 'none';
+    submit.disabled = true;
+    try {
+      const fn = mode === 'login' ? 'signInWithPassword' : 'signUp';
+      const { error } = await supabase.auth[fn]({ email, password });
+      if (error) throw error;
+      // onAuthStateChange will fire boot() once the session lands
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.style.display = 'block';
+    } finally {
+      submit.disabled = false;
+    }
+  };
+}
+
+// ---------- Onboarding view ----------
+
+function renderOnboarding() {
+  app.innerHTML = `
+    <div class="center-screen">
+      <div class="card-box" style="max-width:520px;">
+        <h2>Tell us about your brand</h2>
+        <p class="muted">This shapes every post Claude writes for you.</p>
+        <div id="onb-error" class="error" style="display:none"></div>
+
+        <label>Brand name</label>
+        <input id="brand_name" placeholder="e.g. Acme Analytics" />
+
+        <label>What does it do?</label>
+        <textarea id="description" rows="3" placeholder="A short description of the product and what problem it solves"></textarea>
+
+        <label>Target audience</label>
+        <textarea id="target_audience" rows="2" placeholder="Who are you trying to reach?"></textarea>
+
+        <label>Tone of voice</label>
+        <input id="tone" placeholder="e.g. direct, technical, a little irreverent" />
+
+        <label>Topics you want posts about (comma separated)</label>
+        <input id="topics" placeholder="e.g. pricing objections, product launch, common complaints" />
+
+        <label>Platforms</label>
+        <div class="checkbox-grid" id="platform-checks">
+          ${PLATFORMS.map(p => `<label><input type="checkbox" value="${p}" /> ${p}</label>`).join('')}
+        </div>
+
+        <button id="onb-submit" class="btn-primary" style="width:100%">Finish setup</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('onb-submit').onclick = async () => {
+    const btn = document.getElementById('onb-submit');
+    const errBox = document.getElementById('onb-error');
+    const brand_name = document.getElementById('brand_name').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const target_audience = document.getElementById('target_audience').value.trim();
+    const tone = document.getElementById('tone').value.trim();
+    const topics = document.getElementById('topics').value.split(',').map(t => t.trim()).filter(Boolean);
+    const platforms = Array.from(document.querySelectorAll('#platform-checks input:checked')).map(el => el.value);
+
+    if (!brand_name || !description) {
+      errBox.textContent = 'Brand name and description are required.';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      await authedFetch('profile', {
+        method: 'POST',
+        body: JSON.stringify({ brand_name, description, target_audience, tone, topics, platforms })
+      });
+      await boot();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.style.display = 'block';
+      btn.disabled = false;
+    }
+  };
+}
+
+// ---------- Hub view ----------
+
+function renderHub() {
+  const forumSaves = saves.filter(s => s.type === 'forum');
+  const newsletterSaves = saves.filter(s => s.type === 'newsletter');
+  const current = activeTab === 'forum' ? forumSaves : newsletterSaves;
+
+  app.innerHTML = `
+    <header class="hub-header">
+      <div>
+        <h1 style="margin:0;">${profile.brand_name}</h1>
+        <span class="muted">Content Hub</span>
+      </div>
+      <button class="btn-ghost" id="logout-btn">Log out</button>
+    </header>
+
+    <div class="tabs">
+      <div class="tab ${activeTab === 'forum' ? 'active' : ''}" data-tab="forum">Forum Platforms</div>
+      <div class="tab ${activeTab === 'newsletter' ? 'active' : ''}" data-tab="newsletter">Newsletter Issues</div>
+    </div>
+
+    <div class="generate-bar">
+      ${activeTab === 'forum' ? `
+        <div class="field">
+          <label>Platform</label>
+          <select id="gen-platform">${(profile.platforms && profile.platforms.length ? profile.platforms : PLATFORMS).map(p => `<option value="${p}">${p}</option>`).join('')}</select>
+        </div>
+      ` : ''}
+      <div class="field">
+        <label>Topic</label>
+        <select id="gen-topic">
+          ${(profile.topics && profile.topics.length ? profile.topics : ['General']).map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn-primary" id="gen-btn" ${generating ? 'disabled' : ''}>${generating ? 'Generating…' : 'Generate'}</button>
+    </div>
+
+    <div id="draft-area"></div>
+
+    ${renderStatusGroup('Saved', current.filter(c => c.status === 'saved'))}
+    ${renderStatusGroup('Published', current.filter(c => c.status === 'published'))}
+    ${renderStatusGroup('Trashed', current.filter(c => c.status === 'trashed'))}
+  `;
+
+  if (draft && draft.type === activeTab) {
+    document.getElementById('draft-area').innerHTML = renderDraftCard(draft);
+    wireDraftButtons();
+  }
+
+  document.getElementById('logout-btn').onclick = async () => {
+    await supabase.auth.signOut();
+  };
+
+  document.querySelectorAll('.tab').forEach(el => {
+    el.onclick = () => { activeTab = el.dataset.tab; draft = null; renderHub(); };
+  });
+
+  document.getElementById('gen-btn').onclick = handleGenerate;
+
+  wireCardButtons();
+}
+
+function renderStatusGroup(label, cards) {
+  if (!cards.length) return '';
+  return `
+    <div class="status-group">
+      <h3>${label}</h3>
+      <div class="cards-grid">
+        ${cards.map(c => renderCard(c)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderCard(c) {
+  const platformLabel = c.data.platform ? `<span class="badge">${c.data.platform}</span>` : '';
+  return `
+    <div class="post-card" data-id="${c.id}">
+      <div class="meta">
+        <div>${platformLabel} <span class="badge">${c.data.topic || ''}</span></div>
+        <span class="muted">${new Date(c.updated_at).toLocaleString()}</span>
+      </div>
+      <pre>${escapeHtml(c.data.content)}</pre>
+      <div class="row">
+        ${c.status !== 'published' ? `<button class="btn-green publish-btn" data-id="${c.id}">Publish</button>` : ''}
+        ${c.status !== 'trashed' ? `<button class="btn-danger trash-btn" data-id="${c.id}">Trash</button>` : ''}
+        ${c.status === 'trashed' ? `<button class="btn-danger delete-btn" data-id="${c.id}">Delete permanently</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderDraftCard(d) {
+  return `
+    <div class="post-card" style="border-color: var(--accent); margin-bottom:24px;">
+      <div class="meta">
+        <div>${d.platform ? `<span class="badge">${d.platform}</span>` : ''} <span class="badge">${d.topic}</span></div>
+        <span class="muted">New draft</span>
+      </div>
+      <pre>${escapeHtml(d.content)}</pre>
+      <div class="row">
+        <button class="btn-primary" id="draft-save">Save</button>
+        <button class="btn-green" id="draft-publish">Publish</button>
+        <button class="btn-ghost" id="draft-discard">Discard</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireDraftButtons() {
+  document.getElementById('draft-save').onclick = () => persistDraft('saved');
+  document.getElementById('draft-publish').onclick = () => persistDraft('published');
+  document.getElementById('draft-discard').onclick = () => { draft = null; renderHub(); };
+}
+
+function wireCardButtons() {
+  document.querySelectorAll('.publish-btn').forEach(btn => {
+    btn.onclick = () => updateCardStatus(btn.dataset.id, 'published');
+  });
+  document.querySelectorAll('.trash-btn').forEach(btn => {
+    btn.onclick = () => updateCardStatus(btn.dataset.id, 'trashed');
+  });
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.onclick = () => deleteCard(btn.dataset.id);
+  });
+}
+
+async function handleGenerate() {
+  const topic = document.getElementById('gen-topic').value;
+  const platform = activeTab === 'forum' ? document.getElementById('gen-platform').value : null;
+
+  generating = true;
+  renderHub();
+  try {
+    const result = await authedFetch('generate', {
+      method: 'POST',
+      body: JSON.stringify({ type: activeTab, platform, topic })
+    });
+    draft = result;
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    generating = false;
+    renderHub();
+  }
+}
+
+async function persistDraft(status) {
+  try {
+    await authedFetch('saves', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: draft.type,
+        status,
+        data: { platform: draft.platform, topic: draft.topic, content: draft.content }
+      })
+    });
+    draft = null;
+    await loadSaves();
+    renderHub();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function updateCardStatus(id, status) {
+  const card = saves.find(s => s.id === id);
+  if (!card) return;
+  try {
+    await authedFetch('saves', {
+      method: 'POST',
+      body: JSON.stringify({ id, type: card.type, status, data: card.data })
+    });
+    await loadSaves();
+    renderHub();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function deleteCard(id) {
+  if (!confirm('Delete this permanently?')) return;
+  try {
+    await authedFetch('saves', { method: 'DELETE', body: JSON.stringify({ id }) });
+    await loadSaves();
+    renderHub();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
